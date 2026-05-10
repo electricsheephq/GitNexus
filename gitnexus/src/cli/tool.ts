@@ -17,7 +17,7 @@
 
 import { writeSync } from 'node:fs';
 import { LocalBackend } from '../mcp/local/local-backend.js';
-import { truncateToTokenBudget } from '../config/ignore-service.js';
+import { parseMaxTokens, truncateToTokenBudget } from './token-budget.js';
 import { cliError } from './cli-message.js';
 
 let _backend: LocalBackend | null = null;
@@ -73,6 +73,11 @@ export async function queryCommand(
     cliError('Usage: gitnexus query <search_query>');
     process.exit(1);
   }
+  const maxTokens = parseMaxTokens(options?.maxTokens);
+  if (maxTokens.error) {
+    cliError(`  --max-tokens ${maxTokens.error}\n`);
+    process.exit(1);
+  }
 
   const backend = await getBackend();
   const result = await backend.callTool('query', {
@@ -84,8 +89,8 @@ export async function queryCommand(
     repo: options?.repo,
   });
   let text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-  if (options?.maxTokens) {
-    text = truncateToTokenBudget(text, parseInt(options.maxTokens));
+  if (maxTokens.value) {
+    text = truncateToTokenBudget(text, maxTokens.value);
   }
   output(text);
 }
@@ -104,6 +109,11 @@ export async function contextCommand(
     cliError('Usage: gitnexus context <symbol_name> [--uid <uid>] [--file <path>]');
     process.exit(1);
   }
+  const maxTokens = parseMaxTokens(options?.maxTokens);
+  if (maxTokens.error) {
+    cliError(`  --max-tokens ${maxTokens.error}\n`);
+    process.exit(1);
+  }
 
   const backend = await getBackend();
   const result = await backend.callTool('context', {
@@ -114,8 +124,8 @@ export async function contextCommand(
     repo: options?.repo,
   });
   let text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-  if (options?.maxTokens) {
-    text = truncateToTokenBudget(text, parseInt(options.maxTokens));
+  if (maxTokens.value) {
+    text = truncateToTokenBudget(text, maxTokens.value);
   }
   output(text);
 }
