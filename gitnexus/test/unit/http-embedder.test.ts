@@ -124,6 +124,34 @@ describe('HTTP embedding backend', () => {
       expect(result.length).toBe(1024);
     });
 
+    it('sends configured dimensions as output_dimension for Voyage', async () => {
+      process.env.GITNEXUS_EMBEDDING_URL = 'https://api.voyageai.com/v1';
+      process.env.GITNEXUS_EMBEDDING_MODEL = 'voyage-code-3';
+      process.env.GITNEXUS_EMBEDDING_API_KEY = 'test-key';
+      process.env.GITNEXUS_EMBEDDING_DIMS = '1024';
+
+      const mockEmbedding = Array.from({ length: 1024 }, (_, i) => i * 0.001);
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ data: [{ embedding: mockEmbedding }] }),
+        }),
+      );
+
+      const { embedText } = await import('../../src/core/embeddings/embedder.js');
+      const result = await embedText('test text');
+
+      const body = JSON.parse((fetch as any).mock.calls[0][1].body);
+      expect(body).toMatchObject({
+        model: 'voyage-code-3',
+        input: ['test text'],
+        output_dimension: 1024,
+      });
+      expect(body.dimensions).toBeUndefined();
+      expect(result.length).toBe(1024);
+    });
+
     it('retries on server error', async () => {
       process.env.GITNEXUS_EMBEDDING_URL = 'http://test:8080/v1';
       process.env.GITNEXUS_EMBEDDING_MODEL = 'test-model';
