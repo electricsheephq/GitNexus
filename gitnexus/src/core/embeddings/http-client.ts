@@ -98,8 +98,14 @@ const httpEmbedBatch = async (
   batch: string[],
   model: string,
   apiKey: string,
+  dimensions: number | undefined,
   batchIndex = 0,
 ): Promise<EmbeddingItem[]> => {
+  const body: { input: string[]; model: string; dimensions?: number } = { input: batch, model };
+  if (dimensions !== undefined) {
+    body.dimensions = dimensions;
+  }
+
   let resp: Response;
   try {
     resp = await resilientFetch(
@@ -111,7 +117,7 @@ const httpEmbedBatch = async (
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({ input: batch, model }),
+        body: JSON.stringify(body),
       },
       {
         breakerKey: HTTP_BREAKER_KEY,
@@ -169,7 +175,14 @@ export const httpEmbed = async (texts: string[]): Promise<Float32Array[]> => {
   for (let i = 0; i < texts.length; i += HTTP_BATCH_SIZE) {
     const batch = texts.slice(i, i + HTTP_BATCH_SIZE);
     const batchIndex = Math.floor(i / HTTP_BATCH_SIZE);
-    const items = await httpEmbedBatch(url, batch, config.model, config.apiKey, batchIndex);
+    const items = await httpEmbedBatch(
+      url,
+      batch,
+      config.model,
+      config.apiKey,
+      config.dimensions,
+      batchIndex,
+    );
 
     if (items.length !== batch.length) {
       throw new Error(
@@ -212,7 +225,7 @@ export const httpEmbedQuery = async (text: string): Promise<number[]> => {
   if (!config) throw new Error('HTTP embedding not configured');
 
   const url = `${config.baseUrl}/embeddings`;
-  const items = await httpEmbedBatch(url, [text], config.model, config.apiKey);
+  const items = await httpEmbedBatch(url, [text], config.model, config.apiKey, config.dimensions);
   if (!items.length) {
     throw new Error(`Embedding endpoint returned empty response (${safeUrl(url)})`);
   }

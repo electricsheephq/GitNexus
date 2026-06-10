@@ -117,6 +117,8 @@ export interface AnalyzeOptions {
   verbose?: boolean;
   /** Skip AGENTS.md and CLAUDE.md gitnexus block updates. */
   skipAgentsMd?: boolean;
+  /** Skip all AI context writes: AGENTS.md, CLAUDE.md, and bundled GitNexus skills. */
+  skipAiContext?: boolean;
   /** Omit volatile symbol/relationship counts from AGENTS.md and CLAUDE.md. */
   noStats?: boolean;
   /** Index the folder even when no .git directory is present. */
@@ -411,6 +413,7 @@ export const analyzeCommand = async (inputPath?: string, options?: AnalyzeOption
         dropEmbeddings: options?.dropEmbeddings,
         skipGit: options?.skipGit,
         skipAgentsMd: options?.skipAgentsMd,
+        skipAiContext: options?.skipAiContext,
         noStats: options?.noStats,
         registryName: options?.name,
         // Registry-collision bypass — its own CLI flag, intentionally NOT
@@ -457,7 +460,7 @@ export const analyzeCommand = async (inputPath?: string, options?: AnalyzeOption
     await assertAnalysisFinalized(repoPath);
 
     // Skill generation (CLI-only, uses pipeline result from analysis)
-    if (options?.skills && result.pipelineResult) {
+    if (options?.skills && !options?.skipAiContext && result.pipelineResult) {
       updateBar(99, 'Generating skill files...');
       try {
         const { generateSkillFiles } = await import('./skill-gen.js');

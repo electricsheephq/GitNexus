@@ -81,6 +81,12 @@ export class CompatibleStdioServerTransport implements Transport {
     this._started = true;
     this._stdin.on('data', this._ondata);
     this._stdin.on('error', this._onerror);
+    // EOF on stdin means the client/parent is gone — close the transport so the
+    // server's stdin 'end' / shutdown path runs deterministically rather than
+    // leaving a flowing-mode 'data' listener spinning the event loop.
+    this._stdin.on('end', () => {
+      void this.close();
+    });
   }
 
   private detectFraming(): StdioFraming | null {
