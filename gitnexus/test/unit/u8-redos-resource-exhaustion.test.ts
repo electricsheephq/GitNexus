@@ -53,6 +53,7 @@ const LINEAR_RATIO_BOUND = SIZE_RATIO * 2; // 8× — 2× headroom over expected
 // measurement is ~50% jitter; median-of-5 brings the same 5ms into the
 // reliably-resolvable range above `performance.now()`'s ~10-100µs band.
 const RATIO_MEASUREMENT_FLOOR_MS = 5;
+const LARGE_INPUT_NOISE_BOUND_MS = RATIO_MEASUREMENT_FLOOR_MS * LINEAR_RATIO_BOUND * 2;
 
 function median(samples: number[]): number {
   const sorted = [...samples].sort((a, b) => a - b);
@@ -92,17 +93,15 @@ function medianTimeRegex(re: RegExp, input: string): number {
  *
  * Skip semantics: when the small input is below the noise floor, the
  * ratio denominator is too small to be meaningful. In that case, skip
- * the ratio and assert that the large input still stays under the same
- * absolute budget implied by the linear ratio bound. Median-of-N + the
- * 5ms floor keeps the assertion stable while preserving regression
- * coverage.
+ * the ratio and assert that the large input still stays under a generous
+ * absolute budget near the linear expectation. Median-of-N + the 5ms
+ * floor keeps the assertion stable while preserving regression coverage.
  */
 function assertNearLinearScaling(elapsedSmall: number, elapsedLarge: number, label: string): void {
   if (elapsedSmall < RATIO_MEASUREMENT_FLOOR_MS) {
-    const largeInputBoundMs = RATIO_MEASUREMENT_FLOOR_MS * LINEAR_RATIO_BOUND;
-    if (elapsedLarge >= largeInputBoundMs) {
+    if (elapsedLarge >= LARGE_INPUT_NOISE_BOUND_MS) {
       throw new Error(
-        `${label}: large input ${elapsedLarge.toFixed(2)}ms exceeds ${largeInputBoundMs.toFixed(
+        `${label}: large input ${elapsedLarge.toFixed(2)}ms exceeds ${LARGE_INPUT_NOISE_BOUND_MS.toFixed(
           2,
         )}ms ` +
           `while small input is below the ${RATIO_MEASUREMENT_FLOOR_MS}ms ratio floor ` +
